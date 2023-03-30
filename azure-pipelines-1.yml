@@ -8,9 +8,47 @@ trigger:
 
 pool:
   vmImage: ubuntu-latest
+steps:
 
-- task: HdivCheckTask@1
+- task: Maven@4
   inputs:
-    taskProfile: 'Local'
-    logPath: '/home/vsts/work/1/s/hdivAgentLog.hlg'
-    application: 'spring-petclinic'
+    mavenPomFile: 'pom.xml'
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    javaHomeOption: 'JDKVersion'
+    mavenVersionOption: 'Default'
+    mavenAuthenticateFeed: false
+    effectivePomSkip: false
+    sonarQubeRunAnalysis: false 
+
+- task: dependency-check-build-task@6
+  inputs:
+    projectName: 'spring-petclinic'
+    scanPath: '/home/vsts/work/1/s/target' 
+
+- task: SnykSecurityScan@1
+  inputs:
+    serviceConnectionEndpoint: 'snyk'
+    testType: 'app'
+    monitorWhen: 'always'
+    failOnIssues: false
+    format: 'HTML'
+
+- task: SonarCloudPrepare@1
+  inputs:
+    SonarCloud: 'sonarcloud'
+    organization: 'prajktamhapsekar829'
+    scannerMode: 'CLI'
+    configMode: 'manual'
+    cliProjectKey: 'prajktamhapsekar829'
+    cliProjectName: 'spring-petclinic'
+    cliSources: '.'
+    extraProperties: |
+      # Additional properties that will be passed to the scanner, 
+      # Put one key=value per line, example:
+      # sonar.exclusions=**/*.bin
+      sonar.java.binaries=.
+- task: SonarCloudAnalyze@1
+- task: SonarCloudPublish@1
+  inputs:
+    pollingTimeoutSec: '300'
